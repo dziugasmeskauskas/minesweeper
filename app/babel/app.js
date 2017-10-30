@@ -15,16 +15,15 @@ const make2dArr = (cols, rows) => {
 
 class Cell {
   
-    constructor(table, id) {
+    constructor(table, coords) {
       this.bomb = false;
       this.revealed = false;
       this.bombsAround = 0;
-      this.x = id[0];
-      this.y = id[1];
+      this.x = coords[0];
+      this.y = coords[1];
       this.div = document.createElement('div');
   
       this.div.className = 'cell';
-      this.div.id = id.toString();
       table.appendChild(this.div);
       this.div.oncontextmenu = (e) => {e.preventDefault()}
 
@@ -41,6 +40,10 @@ class Cell {
       this.div.innerHTML = '🚩';
     }
 
+    explode() {
+      this.div.innerHTML = '💣';
+    }
+
     reveal() {
       this.revealed = true;
       this.bombsAround == 0 && this.seedFill();
@@ -50,10 +53,6 @@ class Cell {
   
     check() {
       this.bomb ? this.explode() : this.reveal(); 
-    }
-
-    explode() {
-      this.div.innerHTML = '💣';
     }
   
     count() {
@@ -122,8 +121,4 @@ const makeTable = () => {
   };
 }
 
-
 makeTable();
-
-
-
