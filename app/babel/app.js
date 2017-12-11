@@ -1,5 +1,4 @@
 
-
 class Cell {
   constructor(table, coords) {
     this.bomb = false
@@ -12,10 +11,9 @@ class Cell {
     table.appendChild(this.div)
 
     this.div.oncontextmenu = (e) => {e.preventDefault()}
-    this.div.addEventListener('click', this.checkIfHasBomb.bind(this))
     this.div.addEventListener('contextmenu', this.showFlag.bind(this))
+    this.div.addEventListener('click', this.reveal.bind(this))
   }
-
 
   showBombCount() {
     this.div.innerHTML = this.bombsAround
@@ -25,29 +23,17 @@ class Cell {
     this.div.innerHTML = '🚩'
   }
 
-  showExplosion() {
-    this.div.innerHTML = '💣'
-  }
-
   reveal() {
     this.revealed = true
-    this.bombsAround == 0 && this.floodFill()
-    this.bombsAround && this.showBombCount()
+    this.bombsAround === 0 ? this.floodFill() : this.showBombCount()
     this.div.style.background = '#D3D3D3'
   }
 
-  checkIfHasBomb() {
-    this.bomb ? this.showExplosion() : this.reveal()
+  countNeighbours() {
+    if (this.bomb) {return}
+    this.getNeighbors().forEach(neighbor => neighbor.bomb && this.bombsAround++)
   }
 
-  countNeighbours() {
-    if (this.bomb) {
-      this.neighborCount = -1
-      return
-    } 
-    this.getNeighbors().forEach(neighbor => neighbor.bomb && this.bombsAround++)  
-  }
-  
   floodFill() {
     this.getNeighbors().forEach(neighbor => !neighbor.revealed && neighbor.reveal())
   }
@@ -61,14 +47,28 @@ class Cell {
       for (let yOffset = -1; yOffset <= 1; yOffset++) {
         let o = this.y + yOffset
         if (o < 0 || o >= game.rows) continue
+
         const neighbor = game.grid[i][o]
         neighbors.push(neighbor)
-        
+
       }
     }
     return neighbors
   }
 
+}
+
+
+
+class BombCell extends Cell {
+  constructor(table, coords) {
+    super(table, coords)
+    this.bomb = true
+  }
+
+  reveal() {
+    this.div.innerHTML = '💣'
+  }
 }
 
 class Board {
@@ -77,33 +77,51 @@ class Board {
     this.rows = options.rows
     this.cols = options.cols
     this.bombs = options.bombs
+    this.table = options.DOMElement
   }
 
   makeTable() {
     this.grid = Array(this.cols).fill(0).map(x => Array(this.rows))
-    const table = document.getElementById('app')
-    this.addCells(table)
-    this.addBombs(this.bombs)
+    this.addCells()
     this.getNeighboursCount()
   }
 
-  addCells(table) {
-    for (let i = 0; i < this.cols; i++) {
-      for (let j = 0; j < this.rows; j++) {
-        this.grid[i][j] = new Cell(table, [i, j], game)
+  addCells() {
+    const bombLocs = this.getBombLocs()
+    for (let x = 0; x < this.cols; x++) {
+      for (let y = 0; y < this.rows; y++) {
+        bombLocs.some((loc, i) => {
+          if (this.compareArrays(loc, [x, y])) {
+            this.grid[x][y] = new BombCell(this.table, [x, y], game)
+            return true
+          } else if (i == (bombLocs.length - 1)) {
+            this.grid[x][y] = new Cell(this.table, [x, y], game)
+          }
+        })
       }
     }
   }
 
-  addBombs(bombCount) {
-    if(bombCount > 0) {
+  getBombLocs() {
+    const arr = []
+    while (this.bombs > 0) {
       let x = this.getRandomCoord(this.cols)
       let y = this.getRandomCoord(this.rows)
-      if (!this.grid[x][y].bomb) {
-        this.grid[x][y].bomb = true
+      if (true) {
+        arr.push([x, y])
+        this.bombs--
       }
-      this.addBombs(--bombCount)
     }
+    return arr
+  }
+
+  compareArrays(a1, a2) {
+    let i = a1.length
+    if (i != a2.length) return false
+    while (i--) {
+      if (a1[i] !== a2[i]) return false
+    }
+    return true
   }
 
   getRandomCoord(limit) {
@@ -131,8 +149,10 @@ const options = {
   grid: [],
   rows: 16,
   cols: 16,
-  bombs: 25
+  bombs: 30,
+  DOMElement: document.getElementById('app')
 }
 
 const game = new Board(options)
 game.makeTable()
+
