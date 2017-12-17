@@ -1,4 +1,5 @@
 
+
 class Cell {
   constructor(table, coords) {
     this.bomb = false
@@ -64,20 +65,44 @@ class BombCell extends Cell {
   constructor(table, coords) {
     super(table, coords)
     this.bomb = true
+    this.gameLost = true
   }
 
   reveal() {
     this.div.innerHTML = '💣'
+    this.endGame()
+  }
+
+  endGame() {
+    const state = new gameState(this.gameLost)
+  }
+}
+
+
+class gameState {
+  constructor (state) {
+    this.lost = state
+    this.info = document.querySelector('.info__cont')
+    this.status = document.querySelector('.info__status')
+  
+    this.showState()
+  }
+
+  showState () {
+    this.info.classList.remove('hide')
+    if(this.lost) {
+      this.status.innerHTML = 'Game lost'
+    }
   }
 }
 
 class Board {
-  constructor(options) {
-    this.grid = options.grid
+  constructor(options, table, grid) {
+    this.grid = grid
     this.rows = options.rows
     this.cols = options.cols
     this.bombs = options.bombs
-    this.table = options.DOMElement
+    this.table = table
   }
 
   makeTable() {
@@ -141,18 +166,35 @@ class Board {
     }
     return gridItems
   }
-
 }
 
+const table = document.getElementById('app')
+const grid = []
+let game = ''
 
 const options = {
-  grid: [],
-  rows: 16,
-  cols: 16,
-  bombs: 30,
-  DOMElement: document.getElementById('app')
+  "rows": 16,
+  "cols": 16,
+  "bombs": 25
 }
 
-const game = new Board(options)
+
+game = new Board(options, table, grid)
 game.makeTable()
+
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+
 
