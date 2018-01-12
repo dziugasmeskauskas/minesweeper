@@ -1,140 +1,200 @@
+
+
 class Cell {
   constructor(table, coords) {
-    this.bomb = false;
-    this.revealed = false;
-    this.bombsAround = 0;
-    this.x = coords[0];
-    this.y = coords[1];
+    this.bomb = false
+    this.revealed = false
+    this.bombsAround = 0
+    this.x = coords[0]
+    this.y = coords[1]
+    this.div = document.createElement('div')
+    this.div.className = 'cell'
+    table.appendChild(this.div)
 
-    this.div = document.createElement('div');
-    this.div.className = 'cell';
-    table.appendChild(this.div);
-
-    this.div.oncontextmenu = (e) => {e.preventDefault()};
-    this.div.addEventListener('click', this.check.bind(this));
-    this.div.addEventListener('contextmenu', this.addFlag.bind(this));
+    this.div.oncontextmenu = (e) => {e.preventDefault()}
+    this.div.addEventListener('contextmenu', this.showFlag.bind(this))
+    this.div.addEventListener('click', this.reveal.bind(this))
   }
 
-
-  addBombCount() {
+  showBombCount() {
     this.div.innerHTML = this.bombsAround
   }
 
-  addFlag() {
-    this.div.innerHTML = '🚩';
-  }
-
-  explode() {
-    this.div.innerHTML = '💣';
+  showFlag() {
+    this.div.innerHTML = '🚩'
   }
 
   reveal() {
-    this.revealed = true;
-    this.bombsAround == 0 && this.seedFill();
-    this.bombsAround && this.addBombCount();
+    this.revealed = true
+    this.bombsAround === 0 ? this.floodFill() : this.showBombCount()
     this.div.style.background = '#D3D3D3'
   }
 
-  check() {
-    this.bomb ? this.explode() : this.reveal();
+  countNeighbours() {
+    if (this.bomb) {return}
+    this.getNeighbors().forEach(neighbor => neighbor.bomb && this.bombsAround++)
   }
 
-  count() {
-    if (this.bomb) {
-      this.neighborCount = -1;
-      return;
-    }
-    for (let xOffset = -1; xOffset <= 1; xOffset++) {
-      let i = this.x + xOffset;
-      if (i < 0 || i >= game.cols) continue;
-
-      for (let yOffset = -1; yOffset <= 1; yOffset++) {
-        let o = this.y + yOffset;
-        if (o < 0 || o >= game.rows) continue;
-
-        let neighbor = game.grid[i][o];
-        neighbor.bomb && this.bombsAround++;
-      }
-    }
+  floodFill() {
+    this.getNeighbors().forEach(neighbor => !neighbor.revealed && neighbor.reveal())
   }
 
-  seedFill() {
+  getNeighbors() {
+    const neighbors = []
     for (let xOffset = -1; xOffset <= 1; xOffset++) {
-      let i = this.x + xOffset;
-      if (i < 0 || i >= game.cols) continue;
+      let i = this.x + xOffset
+      if (i < 0 || i >= game.cols) continue
 
       for (let yOffset = -1; yOffset <= 1; yOffset++) {
-        let o = this.y + yOffset;
-        if (o < 0 || o >= game.rows) continue;
+        let o = this.y + yOffset
+        if (o < 0 || o >= game.rows) continue
 
-        let neighbor = game.grid[i][o];
-        if (!neighbor.revealed) {
-          neighbor.reveal();
-        }
+        const neighbor = game.grid[i][o]
+        neighbors.push(neighbor)
+
       }
+    }
+    return neighbors
+  }
+
+}
+
+
+
+class BombCell extends Cell {
+  constructor(table, coords) {
+    super(table, coords)
+    this.bomb = true
+    this.gameLost = true
+  }
+
+  reveal() {
+    this.div.innerHTML = '💣'
+    this.endGame()
+  }
+
+  endGame() {
+    const state = new gameState(this.gameLost)
+  }
+}
+
+
+class gameState {
+  constructor (state) {
+    this.lost = state
+    this.info = document.querySelector('.info__cont')
+    this.status = document.querySelector('.info__status')
+  
+    this.showState()
+  }
+
+  showState () {
+    this.info.classList.remove('hide')
+    if(this.lost) {
+      this.status.innerHTML = 'Game lost'
     }
   }
 }
 
 class Board {
-  constructor(options) {
-    this.grid = options.grid;
-    this.rows = options.rows;
-    this.cols = options.cols;
-    this.bombs = options.bombs;
+  constructor(options, table, grid) {
+    this.grid = grid
+    this.rows = options.rows
+    this.cols = options.cols
+    this.bombs = options.bombs
+    this.table = table
   }
 
   makeTable() {
-    this.grid = this.make2dArr(this.cols, this.rows);
-    const table = document.getElementById('app');
-    this.addCells(table);
-    this.addBombs();
-    this.countNeighbours();
+    this.grid = Array(this.cols).fill(0).map(x => Array(this.rows))
+    this.addCells()
+    this.getNeighboursCount()
   }
 
-  addCells(table) {
+  addCells() {
+    const bombLocs = this.getBombLocs()
+    for (let x = 0; x < this.cols; x++) {
+      for (let y = 0; y < this.rows; y++) {
+        bombLocs.some((loc, i) => {
+          if (this.compareArrays(loc, [x, y])) {
+            this.grid[x][y] = new BombCell(this.table, [x, y], game)
+            return true
+          } else if (i == (bombLocs.length - 1)) {
+            this.grid[x][y] = new Cell(this.table, [x, y], game)
+          }
+        })
+      }
+    }
+  }
+
+  getBombLocs() {
+    const arr = []
+    while (this.bombs > 0) {
+      let x = this.getRandomCoord(this.cols)
+      let y = this.getRandomCoord(this.rows)
+      if (true) {
+        arr.push([x, y])
+        this.bombs--
+      }
+    }
+    return arr
+  }
+
+  compareArrays(a1, a2) {
+    let i = a1.length
+    if (i != a2.length) return false
+    while (i--) {
+      if (a1[i] !== a2[i]) return false
+    }
+    return true
+  }
+
+  getRandomCoord(limit) {
+    return ~~(Math.random() * limit)
+  }
+
+  getNeighboursCount() {
+    this.getGridItems().forEach(item => item.countNeighbours())
+  }
+
+  getGridItems() {
+    const gridItems = []
     for (let i = 0; i < this.cols; i++) {
       for (let j = 0; j < this.rows; j++) {
-        this.grid[i][j] = new Cell(table, [i, j]);
+        gridItems.push(this.grid[i][j])
       }
     }
-  }
-
-  addBombs() {
-    for (let n = 0; n < this.bombs; n++) {
-      let x = ~~(Math.random() * this.cols);
-      let y = ~~(Math.random() * this.rows);
-
-      if (!this.grid[x][y].bomb) {
-        this.grid[x][y].bomb = true;
-      }
-    }
-  }
-
-  countNeighbours() {
-    for (let i = 0; i < this.cols; i++) {
-      for (let j = 0; j < this.rows; j++) {
-        this.grid[i][j].count();
-      }
-    };
-  }
-
-  make2dArr(cols, rows) {
-    let arr = new Array(cols);
-    for (let i = 0; i < arr.length; i++) {
-      arr[i] = new Array(rows);
-    }
-    return arr;
+    return gridItems
   }
 }
 
+const table = document.getElementById('app')
+const grid = []
+let game = ''
 
 const options = {
-  grid: [],
-  rows: 16,
-  cols: 16,
-  bombs: 25
+  "rows": 16,
+  "cols": 16,
+  "bombs": 25
 }
 
-const game = new Board(options);
-game.makeTable();
+
+game = new Board(options, table, grid)
+game.makeTable()
+
+
+
+
+
+
+
+
+
+ 
+
+
+
+
+
+
+
